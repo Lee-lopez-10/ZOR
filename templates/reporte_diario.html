@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-dark"><i class="bi bi-graph-up-arrow me-2"></i>Reporte de Ventas de Hoy</h2>
+            <p class="text-muted">Resumen detallado de las transacciones realizadas el día de hoy.</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="card bg-primary text-white shadow-sm">
+                <div class="card-body py-2">
+                    <h6 class="text-uppercase mb-0 opacity-75" style="font-size: 0.7rem;">Corte del Día</h6>
+                    <h2 class="mb-0 fw-bold">${{ "{:,.2f}".format(total_dia) }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0">Historial de Tickets</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-3">ID</th>
+                                    <th>Hora</th>
+                                    <th>Cliente</th>
+                                    <th>Vendedor</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for v in ventas %}
+                                <tr>
+                                    <td class="ps-3 fw-bold">#{{ v['id'] }}</td>
+                                    <td class="text-muted small">{{ v['hora'] }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px;">
+                                                <i class="bi bi-person text-primary" style="font-size: 0.8rem;"></i>
+                                            </div>
+                                            <span>{{ v['cliente'] }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary rounded-pill fw-normal">{{ v['vendedor'] }}</span>
+                                    </td>
+                                    <td class="fw-bold">${{ "{:,.2f}".format(v['total']) }}</td>
+                                    <td>
+                                        <span class="{{ v['estado_class'] }}">{{ v['estado'] }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="verDetalle({{ v['id'] }})" title="Ver Detalle">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                            <a href="{{ url_for('imprimir_ticket', id_pedido=v['id']) }}" class="btn btn-sm btn-outline-dark" target="_blank">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+                                            {% if session['rol'] == 'Administrador' and v['estado'] != 'Devuelto' %}
+                                            <button class="btn btn-sm btn-outline-danger" onclick="confirmarDevolucion({{ v['id'] }})" title="Devolución">
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not ventas %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-5 text-muted">No se han registrado ventas hoy.</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0">Lo más vendido hoy</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for item in resumen %}
+                        <div class="list-group-item px-0 py-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-0 fw-bold">{{ item[0] }}</h6>
+                                    <small class="text-muted">{{ item[1] }} unidades vendidas</small>
+                                </div>
+                                <span class="badge bg-success-subtle text-success rounded-pill fw-bold">
+                                    ${{ "{:,.2f}".format(item[2]) }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDetalle" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Detalle de Venta</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="detalleContenido"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function verDetalle(id) {
+    fetch(`/api/detalle_venta/${id}`)
+        .then(res => res.json())
+        .then(data => {
+            let html = `
+                <div class="p-3 border-bottom bg-light">
+                    <div class="row">
+                        <div class="col-6"><small class="text-muted d-block">Ticket</small><strong>#${id}</strong></div>
+                        <div class="col-6"><small class="text-muted d-block">Cliente</small><strong>${data.cliente}</strong></div>
+                    </div>
+                </div>
+                <table class="table mb-0">
+                    <thead class="small text-uppercase bg-light">
+                        <tr><th>Producto</th><th>Cant</th><th class="text-end">Subtotal</th></tr>
+                    </thead>
+                    <tbody>`;
+            
+            data.productos.forEach(p => {
+                html += `<tr>
+                    <td>${p.producto}</td>
+                    <td>${p.cantidad}</td>
+                    <td class="text-end fw-bold">$${p.subtotal.toFixed(2)}</td>
+                </tr>`;
+            });
+            
+            html += `</tbody></table>`;
+            document.getElementById('detalleContenido').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('modalDetalle')).show();
+        });
+}
+
+function confirmarDevolucion(id) {
+    if(confirm(`¿Está seguro de anular la venta #${id}? El stock será restaurado.`)) {
+        window.location.href = `/venta/devolver/${id}`;
+    }
+}
+</script>
+{% endblock %}

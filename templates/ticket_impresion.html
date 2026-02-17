@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket #{{ pedido[0] }}</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            margin: 0;
+            padding: 10px;
+            width: 300px;
+            color: #000;
+        }
+        .centrado { text-align: center; }
+        .linea { border-bottom: 1px dashed #000; margin: 5px 0; }
+        .flex { display: flex; justify-content: space-between; }
+        .titulo { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
+        @media print { .no-print { display: none; } }
+        .btn-imprimir {
+            display: block; width: 100%; padding: 10px; background: #000;
+            color: #fff; text-align: center; text-decoration: none; margin-bottom: 15px;
+            font-family: sans-serif; border-radius: 5px; cursor: pointer;
+        }
+    </style>
+</head>
+<body onload="window.print()">
+
+    <a href="#" onclick="window.print(); return false;" class="no-print btn-imprimir">🖨️ IMPRIMIR</a>
+
+    <div class="centrado">
+        <div class="titulo">ANTONELLA PERFUMERÍA</div>
+        <small>Fragancias que enamoran</small><br>
+        <small>RUC: J031000000000</small><br>
+        <small>Tel: 555-0199</small>
+    </div>
+
+    <div class="linea"></div>
+
+    <div class="flex">
+        <span>Ticket: #{{ pedido[0] }}</span>
+        <span>{{ pedido[1].strftime('%d/%m/%Y %H:%M') }}</span>
+    </div>
+    
+    <div style="margin-top: 5px;">
+        <strong>Le atendió:</strong> {{ pedido[3] }}
+    </div>
+    <div style="margin-top: 2px;">
+        <strong>Cliente:</strong> {{ pedido[4] if pedido[4] else 'Público General' }}
+    </div>
+
+    <div class="linea"></div>
+
+    <table style="width: 100%; text-align: left;">
+        <tr>
+            <th style="padding-bottom: 5px;">Cant. Prod.</th>
+            <th style="text-align: right;">Total</th>
+        </tr>
+        {% for item in detalles %}
+        <tr>
+            <td colspan="2" style="font-weight: bold;">{{ item[0] }}</td>
+        </tr>
+        <tr>
+            <td>{{ item[1] }} x ${{ "{:.2f}".format(item[2]) }}</td>
+            <td style="text-align: right;">${{ "{:.2f}".format(item[3]) }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <div class="linea"></div>
+
+    <!-- CÁLCULOS FINALES -->
+    {% set descuento = pedido[5] if pedido[5] else 0 %}
+    {% set total_pagar = pedido[2] %}
+    {% set subtotal_real = total_pagar + descuento %}
+
+    <div class="flex" style="margin-top: 5px;">
+        <span>Subtotal:</span>
+        <span>${{ "{:,.2f}".format(subtotal_real) }}</span>
+    </div>
+
+    {% if descuento > 0 %}
+    <div class="flex" style="color: black; font-weight: bold;">
+        <span>Descuento:</span>
+        <span>-${{ "{:,.2f}".format(descuento) }}</span>
+    </div>
+    {% endif %}
+
+    <div class="flex" style="font-size: 18px; font-weight: bold; margin-top: 10px; border-top: 1px solid #000; padding-top: 5px;">
+        <span>TOTAL:</span>
+        <span>${{ "{:,.2f}".format(total_pagar) }}</span>
+    </div>
+
+    <div class="linea"></div>
+
+    <div class="centrado" style="margin-top: 15px;">
+        <small>¡Gracias por su compra!</small><br>
+        <small>www.antonella-perfumeria.com</small>
+    </div>
+
+</body>
+</html>

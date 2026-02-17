@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .dashboard-wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    @media (max-width: 991px) {
+        .dashboard-wrap { max-width: 100%; }
+    }
+</style>
+
+<div class="dashboard-wrap">
+
+<!-- ZONA DE ALERTAS -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show shadow-sm border-0 mb-4">
+                <strong>{{ '⛔ Acción Bloqueada:' if category == 'error' else '✅ Éxito:' }}</strong> {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+
+<!-- 1. KPIS (TARJETAS) -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card p-4 h-100 border-0 shadow-sm" style="border-left: 5px solid #2ecc71 !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><h6 class="text-muted mb-2 text-uppercase">Ventas de Hoy</h6><h2 class="mb-0 fw-bold text-success">${{ "{:,.2f}".format(ventas) }}</h2></div>
+                <div class="bg-success bg-opacity-10 p-3 rounded-circle text-success fs-4"><i class="fa-solid fa-sack-dollar"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-4 h-100 border-0 shadow-sm" style="border-left: 5px solid #e74c3c !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><h6 class="text-muted mb-2 text-uppercase">Stock Crítico</h6><h2 class="mb-0 fw-bold text-danger">{{ alertas }}</h2></div>
+                <div class="bg-danger bg-opacity-10 p-3 rounded-circle text-danger fs-4"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-4 h-100 border-0 shadow-sm" style="border-left: 5px solid #3498db !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><h6 class="text-muted mb-2 text-uppercase">Total Productos</h6><h2 class="mb-0 fw-bold text-primary">{{ lista|length }}</h2></div>
+                <div class="bg-primary bg-opacity-10 p-3 rounded-circle text-primary fs-4"><i class="fa-solid fa-boxes-stacked"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3. TABLA INVENTARIO CON BUSCADOR -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div>
+        <h3 class="fw-bold mb-1" style="font-family: 'Playfair Display';">Inventario General</h3>
+        <p class="text-muted mb-0">Gestión de productos y existencias</p>
+    </div>
+
+    <!-- BUSCADOR -->
+    <div class="flex-grow-1 mx-md-4" style="max-width: 400px;">
+        <div class="input-group shadow-sm rounded-pill overflow-hidden border">
+            <span class="input-group-text bg-white border-0 ps-3"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+            <input type="text" id="buscadorInventario" class="form-control border-0" placeholder="Buscar por nombre o categoría...">
+        </div>
+    </div>
+
+    <a href="{{ url_for('formulario_producto') }}" class="btn btn-gold shadow-sm px-4 rounded-pill text-nowrap">+ Nuevo Perfume</a>
+</div>
+
+<div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-5">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle" id="tablaInventario">
+            <thead class="bg-light text-uppercase small text-muted">
+                <tr>
+                    <th class="ps-4 py-3">Producto</th>
+                    <th>Marca</th>
+                    <th>Precio</th>
+                    <th>Stock</th>
+                    <th>Género</th>
+                    <th class="text-end pe-4">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in lista %}
+                <tr>
+                    <td class="ps-4">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3 position-relative">
+                                {% if p[7] %}
+                                    {% set img_path = p[7] %}
+                                    {% if '/' not in img_path %}
+                                        {% set img_path = 'img/perfumes/' ~ img_path %}
+                                    {% endif %}
+                                    <img src="{{ url_for('static', filename=img_path) }}" 
+                                        class="rounded-3 shadow-sm"
+                                        style="width: 45px; height: 45px; object-fit: cover;">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='img/logo_antonella.png') }}" 
+                                        class="rounded-3 shadow-sm"
+                                        style="width: 45px; height: 45px; object-fit: cover;">
+                                {% endif %}
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold text-dark">{{ p[1] }}</h6>
+                                {% if p[6] %}
+                                    <small class="text-muted">{{ p[6] }} ml</small>
+                                {% endif %}
+                                <small class="text-muted">ID: {{ p[0] }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-light text-dark border">{{ p[2] }}</span></td>
+                    <td class="fw-bold text-dark">${{ p[3] }}</td>
+                    <td>
+                        {% if p[4] <= 5 %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2">CRÍTICO: {{ p[4] }}</span>
+                        {% else %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success px-2">{{ p[4] }} u.</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">{{ p[5] if p[5] else '—' }}</span>
+                    </td>
+                    <td class="text-end pe-4">
+                        <!-- Botones de Acción (Se eliminó el botón verde de reabastecer) -->
+                        <a href="{{ url_for('formulario_producto', id=p[0]) }}" class="btn btn-sm btn-outline-primary rounded-circle shadow-sm me-1" style="width: 32px; height: 32px;" title="Editar">
+                            <i class="fa-solid fa-pen"></i>
+                        </a>
+                        
+                        <button class="btn btn-sm btn-outline-danger rounded-circle shadow-sm" style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#modalEliminar" data-id="{{ p[0] }}" data-nombre="{{ p[1] }}" title="Eliminar">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL ELIMINAR -->
+<div class="modal fade" id="modalEliminar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title fw-bold">⚠️ Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3 text-danger opacity-50" style="font-size: 4rem;"><i class="fa-solid fa-trash-can"></i></div>
+                <h4 class="mb-2 fw-bold">¿Eliminar producto?</h4>
+                <p class="text-muted">Se borrará permanentemente: <br><strong id="nombreProductoModal" class="text-dark fs-5">...</strong></p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center pb-4">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <a href="#" id="botonConfirmarBorrado" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">Sí, Eliminar</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Modal Script Eliminar
+    var modalEliminar = document.getElementById('modalEliminar')
+    modalEliminar.addEventListener('show.bs.modal', function (event) {
+        var boton = event.relatedTarget;
+        modalEliminar.querySelector('#nombreProductoModal').textContent = boton.getAttribute('data-nombre');
+        modalEliminar.querySelector('#botonConfirmarBorrado').href = "/eliminar/" + boton.getAttribute('data-id');
+    })
+
+    // Buscador
+    document.getElementById('buscadorInventario').addEventListener('keyup', function() {
+        var searchText = this.value.toLowerCase();
+        var tableRows = document.querySelectorAll('#tablaInventario tbody tr');
+        tableRows.forEach(function(row) {
+            var text = row.innerText.toLowerCase();
+            row.style.display = text.includes(searchText) ? '' : 'none';
+        });
+    });
+</script>
+</div>
+{% endblock %}

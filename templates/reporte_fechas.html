@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="card shadow-lg border-0 rounded-4 mb-4">
+    <div class="card-body p-4">
+        <h3 class="fw-bold mb-4" style="font-family: 'Playfair Display';">📅 Reporte Histórico de Ventas</h3>
+        
+        <!-- FILTRO DE FECHAS -->
+        <form method="POST" class="row g-3 align-items-end mb-4 bg-light p-3 rounded-3">
+            <div class="col-md-4">
+                <label class="fw-bold text-muted small">FECHA INICIO</label>
+                <input type="date" name="fecha_inicio" class="form-control" required value="{{ f_ini }}">
+            </div>
+            <div class="col-md-4">
+                <label class="fw-bold text-muted small">FECHA FIN</label>
+                <input type="date" name="fecha_fin" class="form-control" required value="{{ f_fin }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-dark w-100"><i class="fa-solid fa-filter me-2"></i>Generar Reporte</button>
+            </div>
+        </form>
+
+        {% if ventas %}
+            
+            <!-- SECCIÓN DE GRÁFICOS (NUEVO LUGAR) -->
+            <div class="row mb-5">
+                <div class="col-lg-8 mb-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-chart-line text-gold me-2"></i>Tendencia del Periodo</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartTimeline" height="50"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-chart-pie text-gold me-2"></i>Géneros</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartCat" height="100"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-trophy text-gold me-2"></i>Top 5 Productos del Periodo</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartTop" height="40"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLA DE RESULTADOS -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Resultados: <span class="fw-bold">{{ ventas|length }} ventas</span></h5>
+                <button onclick="exportTableToExcel('tablaVentas')" class="btn btn-success btn-sm shadow-sm">
+                    <i class="fa-solid fa-file-excel me-2"></i>Exportar a Excel
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle border" id="tablaVentas">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Fecha</th>
+                            <th>Vendedor</th>
+                            <th>Cliente</th>
+                            <th class="text-end">Descuento</th>
+                            <th class="text-end">Total Cobrado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in ventas %}
+                        <tr>
+                            <td>#{{ v[0] }}</td>
+                            <td>{{ v[1].strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>{{ v[2] }}</td>
+                            <td>{{ v[3] if v[3] else 'Público General' }}</td>
+                            <td class="text-end text-danger small">-${{ "{:.2f}".format(v[5] if v[5] else 0) }}</td>
+                            <td class="text-end fw-bold text-dark">${{ "{:.2f}".format(v[4]) }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="table-secondary fw-bold">
+                            <td colspan="5" class="text-end fs-5">TOTAL DEL PERIODO:</td>
+                            <td class="text-end fs-5 text-success">${{ "{:,.2f}".format(total) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="fa-regular fa-calendar-xmark fs-1 mb-3"></i>
+                <p>Selecciona un rango de fechas para ver el reporte y los gráficos.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- LIBRERÍA CHART.JS + SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    function exportTableToExcel(tableID, filename = 'ReporteVentas.xls'){
+        var downloadLink;
+        var dataType = 'application/vnd.ms-excel';
+        var tableSelect = document.getElementById(tableID);
+        var tableHTML = tableSelect.outerHTML.replace(/ /g, '%20');
+        filename = filename?filename+'.xls':'excel_data.xls';
+        downloadLink = document.createElement("a");
+        document.body.appendChild(downloadLink);
+        if(navigator.msSaveOrOpenBlob){
+            var blob = new Blob(['\ufeff', tableHTML], { type: dataType });
+            navigator.msSaveOrOpenBlob( blob, filename);
+        }else{
+            downloadLink.href = 'data:' + dataType + ', ' + tableHTML;
+            downloadLink.download = filename;
+            downloadLink.click();
+        }
+    }
+
+    // SCRIPT DE GRÁFICOS (Solo se ejecuta si hay datos)
+    {% if ventas %}
+    Chart.defaults.font.family = "'Montserrat', sans-serif";
+    Chart.defaults.color = '#6c757d';
+
+    new Chart(document.getElementById('chartTimeline'), {
+        type: 'line',
+        data: {
+            labels: JSON.parse('{{ time_labels | safe }}'),
+            datasets: [{
+                label: 'Ventas ($)',
+                data: JSON.parse('{{ time_values | safe }}'),
+                borderColor: '#c5a028',
+                backgroundColor: 'rgba(197, 160, 40, 0.1)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } }
+    });
+
+    new Chart(document.getElementById('chartCat'), {
+        type: 'doughnut',
+        data: {
+            labels: JSON.parse('{{ cat_labels | safe }}'),
+            datasets: [{
+                data: JSON.parse('{{ cat_values | safe }}'),
+                backgroundColor: ['#2c3e50', '#c5a028', '#e74c3c', '#3498db', '#9b59b6'],
+                borderWidth: 0
+            }]
+        },
+        options: { responsive: true, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } } } }
+    });
+
+    new Chart(document.getElementById('chartTop'), {
+        type: 'bar',
+        data: {
+            labels: JSON.parse('{{ top_labels | safe }}'),
+            datasets: [{
+                label: 'Unidades',
+                data: JSON.parse('{{ top_values | safe }}'),
+                backgroundColor: '#2c3e50',
+                borderRadius: 5,
+                barPercentage: 0.6
+            }]
+        },
+        options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+    });
+    {% endif %}
+</script>
+
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- ALERTAS -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} shadow-sm border-0 mb-4 rounded-3">
+                <strong>{{ 'Resultado:' }}</strong> {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        
+        {% if caja %}
+            <!-- ================= CAJA ABIERTA (MOSTRAR CIERRE) ================= -->
+            <div class="card border-0 shadow-lg rounded-4 text-center">
+                <div class="card-header bg-success text-white py-4 border-0">
+                    <h1 class="fw-bold mb-0"><i class="fa-solid fa-cash-register me-2"></i>CAJA ABIERTA</h1>
+                    <p class="mb-0 opacity-75">Sesión iniciada: {{ caja[2].strftime('%I:%M %p') }}</p>
+                </div>
+                <div class="card-body p-5">
+                    
+                    <!-- RESUMEN -->
+                    <div class="row mb-4">
+                        <div class="col-6 border-end">
+                            <small class="text-muted fw-bold">FONDO INICIAL</small>
+                            <h3 class="text-muted">${{ "{:,.2f}".format(caja[3]) }}</h3>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-success fw-bold">VENTAS SESIÓN</small>
+                            <h3 class="text-success fw-bold">+${{ "{:,.2f}".format(ventas_hoy) }}</h3>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning border-0 rounded-3 mb-4">
+                        <span class="small fw-bold text-dark">DEBE HABER EN CAJA:</span>
+                        <h2 class="fw-bold text-dark mb-0">${{ "{:,.2f}".format(caja[3] + ventas_hoy) }}</h2>
+                    </div>
+
+                    <hr>
+
+                    <!-- FORMULARIO DE CIERRE -->
+                    <h5 class="fw-bold mt-4 mb-3">⛔ Cerrar Turno</h5>
+                    
+                    <!-- Le damos un ID al form para enviarlo desde el modal -->
+                    <form action="{{ url_for('cerrar_caja') }}" method="POST" id="formCierreCaja">
+                        <input type="hidden" name="id_caja" value="{{ caja[0] }}">
+                        <input type="hidden" name="monto_sistema" value="{{ caja[3] + ventas_hoy }}">
+                        
+                        <div class="mb-3 text-start">
+                            <label class="fw-bold text-dark mb-1">¿Cuánto dinero contaste?</label>
+                            <input type="number" step="0.01" name="monto_real" id="inputMontoReal" class="form-control form-control-lg border-dark text-center fw-bold" placeholder="$ 0.00" required>
+                            <small class="text-muted">Cuenta los billetes y monedas físicos.</small>
+                        </div>
+                        
+                        <!-- BOTÓN MODIFICADO: Ya no hace submit directo, llama a JS -->
+                        <button type="button" class="btn btn-danger w-100 py-3 rounded-pill fw-bold shadow-sm" onclick="verificarCierre()">
+                            Realizar Corte de Caja
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        {% else %}
+            <!-- ================= CAJA CERRADA (MOSTRAR APERTURA) ================= -->
+            <div class="card border-0 shadow-lg rounded-4 text-center">
+                <div class="card-body p-5">
+                    <div class="mb-4 text-muted" style="font-size: 4rem;">
+                        <i class="fa-solid fa-store-slash opacity-50"></i>
+                    </div>
+                    <h2 class="fw-bold text-dark">Turno Cerrado</h2>
+                    <p class="text-muted mb-4">Para comenzar a vender, debes abrir la caja con un fondo inicial (cambio).</p>
+                    
+                    <form action="{{ url_for('abrir_caja') }}" method="POST">
+                        <div class="mb-4">
+                            <label class="fw-bold text-muted small mb-2">MONTO INICIAL (CAMBIO)</label>
+                            <div class="input-group input-group-lg shadow-sm">
+                                <span class="input-group-text bg-white border-end-0 border-light">$</span>
+                                <input type="number" step="0.01" name="monto_inicial" class="form-control border-start-0 border-light text-center fw-bold" placeholder="0.00" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-3 rounded-pill fw-bold shadow-sm">
+                            <i class="fa-solid fa-key me-2"></i> Abrir Caja
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+        
+    </div>
+</div>
+
+<!-- NUEVO MODAL DE CONFIRMACIÓN DE CIERRE -->
+<div class="modal fade" id="modalConfirmarCierre" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title fw-bold">⚠️ Confirmar Cierre</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3 text-danger opacity-50" style="font-size: 4rem;">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h4 class="mb-2 fw-bold">¿Cerrar Caja Definitivamente?</h4>
+                <p class="text-muted">Una vez cerrada, no podrás registrar más ventas en este turno.</p>
+                
+                <div class="alert alert-warning py-2 small border-0 text-dark fw-bold">
+                    Monto Ingresado: $<span id="lblMontoIngresado">0.00</span>
+                </div>
+            </div>
+            <div class="modal-footer border-0 justify-content-center pb-4">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" onclick="document.getElementById('formCierreCaja').submit()">
+                    Sí, Cerrar Turno
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function verificarCierre() {
+        var inputMonto = document.getElementById('inputMontoReal');
+        
+        // 1. Validar si el campo está vacío usando la validación nativa del navegador
+        if (!inputMonto.checkValidity()) {
+            inputMonto.reportValidity(); // Muestra el mensaje "Completa este campo"
+            return;
+        }
+
+        // 2. Si es válido, pasamos el valor al modal y lo mostramos
+        var monto = parseFloat(inputMonto.value).toFixed(2);
+        document.getElementById('lblMontoIngresado').innerText = monto;
+        
+        var modal = new bootstrap.Modal(document.getElementById('modalConfirmarCierre'));
+        modal.show();
+    }
+</script>
+
+{% endblock %}

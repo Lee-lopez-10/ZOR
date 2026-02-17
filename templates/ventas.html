@@ -1,0 +1,507 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .ventas-wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+    @media (max-width: 991px) {
+        .ventas-wrap { max-width: 100%; }
+    }
+</style>
+
+<div class="ventas-wrap">
+<div class="row h-100 justify-content-center g-4">
+    <!-- COLUMNA IZQUIERDA: CATÁLOGO CON FOTOS -->
+    <div class="col-md-7">
+        <div class="card p-4 border-0 shadow-sm">
+            <h5 class="mb-3">Catálogo de Productos</h5>
+
+            <div class="input-group">
+                <input type="text"
+                    id="inputBusqueda"
+                    class="form-control form-control-lg"
+                    placeholder="Buscar perfume..."
+                    oninput="buscarPerfume()"
+
+                >
+                <button
+                  class="btn btn-dark" 
+                  onclick="buscarProducto()">Buscar
+                </button>
+
+            </div>
+        </div>
+
+        <div id="resultadosBusqueda" class="list-group mt-3"></div>
+        <small style="letter-spacing: 1px;">LOS RESULTADOS APARECERÁN AQUÍ</small>
+        <div id="resultados" class="row"></div>
+    </div>
+
+    <!-- COLUMNA DERECHA: TICKET, CLIENTE Y DESCUENTOS -->
+    <div class="col-md-5">
+        <div class="card p-4 border-0 shadow-lg" style="border-top: 5px solid var(--accent-gold);">
+            
+            <!-- 1. SECCIÓN CLIENTE (CRM) -->
+            <div class="mb-3 p-3 bg-light rounded-3 border border-light">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0 fw-bold"><i class="fa-solid fa-user me-2 text-gold"></i>Cliente</h6>
+                    <button class="btn btn-sm btn-link text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalNuevoCliente">+ Nuevo</button>
+                </div>
+                
+                <div class="input-group">
+                    <input type="text" id="inputCliente" class="form-control border-0 shadow-sm" placeholder="Buscar cliente..." onkeyup="buscarCliente()">
+                    <input type="hidden" id="idClienteSeleccionado" value="1"> <!-- 1 = Público General -->
+                    <span class="input-group-text bg-white border-0 shadow-sm"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                </div>
+                <div id="msgClienteInput" class="small text-danger mt-1" style="display:none;"></div>
+                <!-- Lista flotante de clientes -->
+                <div id="listaClientes" class="list-group position-absolute shadow-lg" style="z-index: 1000; width: 85%; display: none;"></div>
+                
+                <div id="infoCliente" class="mt-2 small text-success fw-bold" style="display: none;">
+                    ✅ <span id="nombreClienteSel"></span> (Histórico: $<span id="totalClienteSel"></span>)
+                </div>
+            </div>
+
+            <!-- 2. TABLA DEL CARRITO -->
+            <h4 class="mb-3 fw-bold" style="font-family: 'Playfair Display';">Ticket de Venta</h4>
+            
+            <div class="table-responsive mb-3" style="max-height: 250px; overflow-y: auto; background: #fafafa; border-radius: 15px;">
+                <table class="table table-borderless align-middle mb-0">
+                    <thead class="text-muted small border-bottom">
+                        <tr>
+                            <th class="ps-3">Prod</th>
+                            <th class="text-center">Cant</th>
+                            <th class="text-end pe-3">Subt</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaCarrito"></tbody>
+                </table>
+            </div>
+
+            <!-- 3. SECCIÓN DESCUENTOS Y TOTALES -->
+            <div class="bg-light p-4 rounded-4 mb-4">
+                
+                <!-- Selector de Descuento -->
+                <div class="mb-3 pb-3 border-bottom border-white">
+                    <label class="small fw-bold text-muted mb-1">APLICAR DESCUENTO</label>
+                    <select id="selectDescuento" class="form-select border-0 shadow-sm text-center fw-bold text-success" onchange="recalcularTotal()">
+                        <option value="0" selected>🏷️ Precio Normal (0%)</option>
+                        <option value="0.05">🌟 Cliente VIP (5%)</option>
+                        <option value="0.10">🎂 Cumpleaños (10%)</option>
+                        <option value="0.15">👔 Empleado (15%)</option>
+                        <option value="0.20">🔥 Gran Venta (20%)</option>
+                    </select>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small text-muted">Subtotal:</span>
+                    <span class="fw-bold text-muted" id="textoSubtotal">$0.00</span>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mb-2" id="filaDescuento" style="display: none;">
+                    <span class="small text-success">Descuento:</span>
+                    <span class="fw-bold text-success" id="textoDescuento">-$0.00</span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                    <span class="h6 mb-0 text-dark fw-bold">TOTAL A PAGAR</span>
+                    <span class="h2 mb-0 fw-bold text-dark" id="textoTotal">$0.00</span>
+                </div>
+            </div>
+
+            <button onclick="confirmarVenta()" class="btn btn-gold w-100 py-3 fs-6 shadow-sm text-uppercase fw-bold">
+                ✅ Cobrar
+            </button>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- ================= MODALES ================= -->
+
+<!-- Modal Nuevo Cliente -->
+<div class="modal fade" id="modalNuevoCliente" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 bg-dark text-white">
+                <h6 class="modal-title fw-bold">Nuevo Cliente</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="newNombre" class="form-control mb-2" placeholder="Nombre Completo" required>
+                <div id="msgNuevoNombre" class="small text-danger mb-2" style="display:none;"></div>
+                <input type="text" id="newTel" class="form-control mb-2" placeholder="Teléfono (8 dígitos)">
+                <div id="msgNuevoTel" class="small text-danger mb-2" style="display:none;"></div>
+                <input type="email" id="newEmail" class="form-control mb-3" placeholder="Email (Opcional)">
+                <div id="msgNuevoEmail" class="small text-danger mb-3" style="display:none;"></div>
+                <button onclick="guardarClienteRapido()" class="btn btn-gold w-100">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar -->
+<div class="modal fade" id="modalConfirmar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-body text-center p-4">
+                <h3 class="fw-bold mb-3">Confirmar Venta</h3>
+                <h1 class="text-success fw-bold mb-3" id="modalTotalConfirmar">$0.00</h1>
+                <p class="text-muted">Cliente: <strong id="lblClienteConfirmar">Público General</strong></p>
+                <div class="d-flex gap-2 justify-content-center mt-4">
+                    <button class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-gold rounded-pill px-4" onclick="procesarVentaFinal()">Procesar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Éxito -->
+<div class="modal fade" id="modalExito" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 text-center p-5">
+            <div class="mb-3 text-success fs-1">✅</div>
+            <h3 class="fw-bold">¡Venta Exitosa!</h3>
+            <p class="text-muted">Ticket <strong id="numTicket">#000</strong></p>
+            <div class="d-grid gap-2 mt-4">
+                <a id="btnImprimirTicket" href="#" target="_blank" class="btn btn-outline-dark rounded-pill">🖨️ Imprimir Ticket</a>
+                <button class="btn btn-gold rounded-pill" data-bs-dismiss="modal">Nueva Venta</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- VARIABLES GLOBALES ---
+    let carrito = [];
+    let ultimosProductosBusqueda = [];
+    var modalExitoInstancia;
+    var modalConfirmarInstancia;
+    var modalNuevoClienteInstancia;
+
+    // Variables para cálculos
+    let subtotalVenta = 0;
+    let montoDescuento = 0;
+    let totalFinal = 0;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        modalExitoInstancia = new bootstrap.Modal(document.getElementById('modalExito'));
+        modalConfirmarInstancia = new bootstrap.Modal(document.getElementById('modalConfirmar'));
+        modalNuevoClienteInstancia = new bootstrap.Modal(document.getElementById('modalNuevoCliente'));
+    });
+
+    // ==========================================
+    //  1. GESTIÓN DE CLIENTES (CRM)
+    // ==========================================
+    async function buscarCliente() {
+        let texto = document.getElementById('inputCliente').value;
+        let lista = document.getElementById('listaClientes');
+        let msg = document.getElementById('msgClienteInput');
+
+        const soloLetras = texto.replace(/[^a-zA-ZÁÉÍÓÚÜÑáéíóúüñ\s]/g, '');
+        if (soloLetras !== texto) {
+            document.getElementById('inputCliente').value = soloLetras;
+            msg.innerText = 'Solo se permiten letras y espacios.';
+            msg.style.display = 'block';
+            texto = soloLetras;
+        } else {
+            msg.style.display = 'none';
+        }
+
+        if (texto) {
+            document.getElementById('inputCliente').value = texto.toUpperCase();
+            texto = texto.toUpperCase();
+        }
+        
+        if(texto.length < 2) { lista.style.display = 'none'; return; }
+
+        try {
+            let resp = await fetch(`/api/buscar_cliente?q=${texto}`);
+            let clientes = await resp.json();
+
+            lista.innerHTML = '';
+            if(clientes.length > 0) {
+                lista.style.display = 'block';
+                clientes.forEach(c => {
+                    let item = document.createElement('button');
+                    item.className = 'list-group-item list-group-item-action text-start';
+                    item.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div><strong>${c.nombre}</strong><br><small class='text-muted'>${c.telefono}</small></div>
+                            <span class="badge bg-gold text-dark">$${c.compras.toFixed(0)}</span>
+                        </div>`;
+                    item.onclick = () => seleccionarCliente(c);
+                    lista.appendChild(item);
+                });
+            } else {
+                lista.style.display = 'none';
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    function seleccionarCliente(cliente) {
+        document.getElementById('idClienteSeleccionado').value = cliente.id;
+        document.getElementById('inputCliente').value = cliente.nombre;
+        document.getElementById('listaClientes').style.display = 'none';
+        
+        document.getElementById('infoCliente').style.display = 'block';
+        document.getElementById('nombreClienteSel').innerText = cliente.nombre;
+        document.getElementById('totalClienteSel').innerText = cliente.compras.toFixed(2);
+    }
+
+    async function guardarClienteRapido() {
+        const msgNombre = document.getElementById('msgNuevoNombre');
+        const msgTel = document.getElementById('msgNuevoTel');
+        const msgEmail = document.getElementById('msgNuevoEmail');
+        msgNombre.style.display = 'none';
+        msgTel.style.display = 'none';
+        msgEmail.style.display = 'none';
+
+        let nombreVal = document.getElementById('newNombre').value.trim();
+        const telVal = document.getElementById('newTel').value.trim();
+        const emailVal = document.getElementById('newEmail').value.trim();
+        const nombreOk = /^[a-zA-ZÁÉÍÓÚÜÑáéíóúüñ\s]+$/.test(nombreVal);
+        const telOk = telVal === '' || /^\d{8}$/.test(telVal);
+        const emailOk = emailVal === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
+
+        if (!nombreVal || !nombreOk) {
+            msgNombre.innerText = 'El nombre solo debe contener letras y espacios.';
+            msgNombre.style.display = 'block';
+            return;
+        }
+        if (!telOk) {
+            msgTel.innerText = 'El teléfono debe tener 8 dígitos.';
+            msgTel.style.display = 'block';
+            return;
+        }
+        if (!emailOk) {
+            msgEmail.innerText = 'Correo inválido. Ejemplo: correo@dominio.com';
+            msgEmail.style.display = 'block';
+            return;
+        }
+
+        nombreVal = nombreVal.toUpperCase();
+        document.getElementById('newNombre').value = nombreVal;
+
+        let data = {
+            nombre: nombreVal,
+            telefono: telVal,
+            email: emailVal
+        };
+        
+        try {
+            let resp = await fetch('/api/crear_cliente', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            let res = await resp.json();
+            
+            if(res.status === 'ok') {
+                seleccionarCliente({id: res.id, nombre: res.nombre, compras: 0});
+                modalNuevoClienteInstancia.hide();
+                document.getElementById('newNombre').value = '';
+                document.getElementById('newTel').value = '';
+                document.getElementById('newEmail').value = '';
+            } else {
+                alert("Error: " + res.error);
+            }
+        } catch(e) { alert("Error de conexión"); }
+    }
+
+    // ==========================================
+    //  2. LÓGICA DE PRODUCTOS (FOTOS Y STOCK)
+    // ==========================================
+    //let ultimosProductosBusqueda = [];
+
+        function buscarPerfume() {
+            const q = document.getElementById('inputBusqueda').value;
+
+            fetch(`/api/buscar_perfume?q=${encodeURIComponent(q)}`)
+                .then(res => res.json())
+                .then(data => renderizarResultados(data))
+                .catch(err => console.error(err));
+        }
+
+        function renderizarResultados(lista) {
+            const contenedor = document.getElementById('resultadosBusqueda');
+            let html = '';
+
+            ultimosProductosBusqueda = lista || [];
+
+            lista.forEach((p, idx) => {
+                const candidates = buildPerfumeImageCandidates(p);
+                const img = candidates[0] || '/static/img/logo_antonella.png';
+
+                html += `
+                    <div class="list-group-item d-flex align-items-center">
+                        <img src="${img}"
+                            data-candidates="${candidates.join('|')}"
+                            onerror="rotatePerfumeImg(this)"
+                            style="width:60px;height:60px;
+                                    object-fit:cover;
+                                    border-radius:8px;
+                                    margin-right:15px;">
+                        <div class="flex-grow-1">
+                            <strong>${p.nombre}</strong><br>
+                            <small>$${p.precio} — Stock: ${p.stock}</small>
+                        </div>
+                        <button class="btn btn-sm btn-dark ms-2"
+                                onclick="agregarAlCarrito(ultimosProductosBusqueda[${idx}])">
+                            Agregar
+                        </button>
+                    </div>
+                `;
+            });
+
+            if (!lista.length) {
+                html = `<div class="text-center text-muted p-4">
+                            No se encontraron perfumes
+                        </div>`;
+            }
+
+            contenedor.innerHTML = html;
+        }
+
+
+    function agregarAlCarrito(producto) {
+        let existe = carrito.find(item => item.id === producto.id);
+        
+        if (existe) {
+            if (existe.cantidad < producto.stock) {
+                existe.cantidad++;
+            } else {
+                alert("⚠️ No hay suficiente stock disponible.");
+                return; 
+            }
+        } else {
+            carrito.push({
+                id: producto.id,
+                nombre: producto.nombre,
+                precio: producto.precio,
+                cantidad: 1,
+                stock_max: producto.stock
+            });
+        }
+        renderizarCarrito();
+        // Quitar el perfume de la búsqueda actual
+        if (ultimosProductosBusqueda.length > 0) {
+            ultimosProductosBusqueda = ultimosProductosBusqueda.filter(p => p.id !== producto.id);
+            renderizarResultados(ultimosProductosBusqueda);
+        }
+    }
+
+    function eliminarDelCarrito(index) {
+        if (carrito[index].cantidad > 1) {
+            carrito[index].cantidad--;
+        } else {
+            carrito.splice(index, 1);
+        }
+        renderizarCarrito();
+        if (ultimosProductosBusqueda.length > 0) {
+            renderizarResultados(ultimosProductosBusqueda);
+        }
+    }
+
+    // ==========================================
+    //  3. CÁLCULO DE TOTALES Y DESCUENTOS
+    // ==========================================
+    function renderizarCarrito() {
+        let tbody = document.getElementById('tablaCarrito');
+        tbody.innerHTML = '';
+        subtotalVenta = 0;
+
+        carrito.forEach((item, idx) => {
+            let sub = item.cantidad * item.precio;
+            subtotalVenta += sub;
+            tbody.innerHTML += `
+            <tr>
+                <td class="ps-3"><small>${item.nombre}</small></td>
+                <td class="text-center">${item.cantidad}</td>
+                <td class="text-end">$${sub.toFixed(2)}</td>
+                <td><button class="btn btn-sm text-danger" onclick="eliminarDelCarrito(${idx})">×</button></td>
+            </tr>`;
+        });
+        
+        recalcularTotal();
+    }
+
+    function recalcularTotal() {
+        let porcentaje = parseFloat(document.getElementById('selectDescuento').value);
+        montoDescuento = subtotalVenta * porcentaje;
+        totalFinal = subtotalVenta - montoDescuento;
+
+        document.getElementById('textoSubtotal').innerText = '$' + subtotalVenta.toFixed(2);
+        document.getElementById('textoTotal').innerText = '$' + totalFinal.toFixed(2);
+        
+        if (montoDescuento > 0) {
+            document.getElementById('filaDescuento').style.display = 'flex';
+            document.getElementById('textoDescuento').innerText = '-$' + montoDescuento.toFixed(2);
+        } else {
+            document.getElementById('filaDescuento').style.display = 'none';
+        }
+    }
+
+    // ==========================================
+    //  4. PROCESAR VENTA FINAL
+    // ==========================================
+    function confirmarVenta() {
+        if(carrito.length === 0) return alert("Carrito vacío");
+        if (totalFinal < 0) return alert("Total inválido");
+        
+        document.getElementById('modalTotalConfirmar').innerText = document.getElementById('textoTotal').innerText;
+        let nombre = document.getElementById('inputCliente').value || "Público General";
+        document.getElementById('lblClienteConfirmar').innerText = nombre;
+        
+        modalConfirmarInstancia.show();
+    }
+
+    async function procesarVentaFinal() {
+        modalConfirmarInstancia.hide();
+        let idCliente = document.getElementById('idClienteSeleccionado').value;
+
+        try {
+            let resp = await fetch('/api/procesar_venta', {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    items: carrito, 
+                    total: totalFinal, 
+                    descuento: montoDescuento, 
+                    id_cliente: idCliente 
+                })
+            });
+            let res = await resp.json();
+            
+            if(res.status === 'ok') {
+                document.getElementById('numTicket').innerText = "#" + res.id_pedido;
+                document.getElementById('btnImprimirTicket').href = "/imprimir_ticket/" + res.id_pedido;
+                modalExitoInstancia.show();
+                
+                // Reset Completo
+                carrito = []; 
+                renderizarCarrito();
+                document.getElementById('inputBusqueda').value = '';
+                document.getElementById('resultadosBusqueda').innerHTML = '<div class="text-center text-muted py-5"><small>Busca un producto</small></div>';
+                ultimosProductosBusqueda = [];
+                
+                document.getElementById('inputCliente').value = '';
+                document.getElementById('idClienteSeleccionado').value = '1';
+                document.getElementById('selectDescuento').value = "0";
+                document.getElementById('infoCliente').style.display = 'none';
+            } else {
+                alert("Error: " + res.error);
+            }
+        } catch(e) { alert("Error de red"); }
+    }
+    
+    // Buscar al escribir (Input)
+    document.getElementById('inputBusqueda').addEventListener('input', function () {
+        buscarPerfume();
+    });
+
+</script>
+{% endblock %}

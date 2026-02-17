@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="card border-0 shadow-lg rounded-4 overflow-hidden mb-5">
+    <div class="card-header bg-warning py-4 border-0">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-truck-ramp-box me-2"></i>Recepción Masiva de Mercancía</h4>
+                <p class="mb-0 text-dark opacity-75 small">Registra múltiples productos de un mismo proveedor</p>
+            </div>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-dark btn-sm rounded-pill px-3">Volver al Inventario</a>
+        </div>
+    </div>
+    
+    <div class="card-body p-4 bg-white">
+        
+        <!-- ALERTAS -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} shadow-sm border-0 mb-4 rounded-3">
+                        <strong>{{ 'Estado:' }}</strong> {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('reabastecer_producto') }}" method="POST" id="formMasivo">
+            <input type="hidden" name="origen" value="entrada_stock">
+
+            <!-- 1. SELECCIONAR PROVEEDOR Y HERRAMIENTAS -->
+            <div class="row mb-4 align-items-end">
+                <div class="col-md-6">
+                    <label class="small fw-bold text-muted text-uppercase ls-1 mb-2">1. Selecciona Proveedor</label>
+                    <select id="selectProveedor" class="form-select form-select-lg bg-light border-0 shadow-sm" onchange="cargarProductosProveedor()">
+                        <option value="" selected disabled>-- Elegir Proveedor --</option>
+                        {% for p in proveedores %}
+                            <option value="{{ p[0] }}">{{ p[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <!-- BOTÓN CREAR PRODUCTO (MODAL) -->
+                    <div class="d-flex gap-2 justify-content-md-start mt-3 mt-md-0">
+                        <button type="button" class="btn btn-primary rounded-pill btn-sm" onclick="abrirModalProducto()" id="btnCrearProd" disabled>
+                            <i class="fa-solid fa-plus me-1"></i>Crear Nuevo Producto Aquí
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-1 fst-italic" style="font-size: 0.75rem;">
+                        * Crea productos faltantes sin salir de esta pantalla.
+                    </small>
+                </div>
+            </div>
+
+            <!-- 2. TABLA DE ENTRADAS -->
+            <label class="small fw-bold text-muted text-uppercase ls-1 mb-2">2. Detalle de Productos Recibidos</label>
+            <div class="table-responsive mb-4 shadow-sm rounded-3 border">
+                <table class="table table-hover align-middle mb-0" id="tablaEntradas">
+                    <thead class="bg-dark text-white small text-uppercase">
+                        <tr>
+                            <th style="width: 50%;">Producto</th>
+                            <th style="width: 20%;" class="text-center">Cantidad</th>
+                            <th style="width: 20%;">Costo Unit. Compra ($)</th>
+                            <th style="width: 10%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyEntradas">
+                        <tr id="filaVaciaMensaje">
+                            <td colspan="4" class="text-center py-5 text-muted">
+                                <i class="fa-solid fa-arrow-up mb-2"></i><br>
+                                Selecciona un proveedor para comenzar.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <button type="button" class="btn btn-outline-dark rounded-pill px-4 mb-4" id="btnAgregarFila" onclick="agregarFila()" disabled>
+                <i class="fa-solid fa-plus me-2"></i>Agregar Otro Producto
+            </button>
+
+            <hr class="mb-4">
+
+            <!-- 3. TOTALES GLOBALES -->
+            <div class="row justify-content-end">
+                <div class="col-md-4">
+                    <div class="bg-light p-4 rounded-4">
+                        <label class="small fw-bold text-muted mb-2">COSTO DE ENVÍO / FLETE (GLOBAL)</label>
+                        <div class="input-group input-group-lg mb-3">
+                            <span class="input-group-text bg-white border-0 text-success fw-bold">$</span>
+                            <input type="number" name="envio_global" step="0.01" class="form-control border-0 fw-bold" placeholder="0.00">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-warning w-100 rounded-pill fw-bold shadow-sm py-3" id="btnGuardarTodo" disabled>
+                            <i class="fa-solid fa-check me-2"></i> CONFIRMAR ENTRADA
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- MODAL CREACIÓN RÁPIDA DE PRODUCTO -->
+<div class="modal fade" id="modalProductoRapido" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white border-0">
+                <h6 class="modal-title fw-bold"><i class="fa-solid fa-magic me-2"></i>Crear Producto Rápido</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info py-2 small border-0 mb-3">
+                    <i class="fa-solid fa-circle-info me-1"></i> Se asignará al proveedor actual: <strong id="lblProveedorModal"></strong>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">NOMBRE DEL PRODUCTO</label>
+                    <input type="text" id="newProdNombre" class="form-control" placeholder="Ej: Chanel No. 5">
+                </div>
+                
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="small fw-bold text-muted">PRECIO VENTA</label>
+                        <input type="number" id="newProdPrecio" class="form-control" placeholder="0.00">
+                    </div>
+                    <div class="col-6">
+                        <label class="small fw-bold text-muted">CATEGORÍA</label>
+                        <select id="newProdCat" class="form-select">
+                            {% for c in categorias %}
+                                <option value="{{ c[0] }}">{{ c[1] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn btn-primary w-100 rounded-pill fw-bold shadow-sm" onclick="guardarProductoAjax()">
+                    Guardar y Usar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SCRIPT -->
+<script>
+    let productosDelProveedor = [];
+    var modalProductoInstancia;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        modalProductoInstancia = new bootstrap.Modal(document.getElementById('modalProductoRapido'));
+    });
+
+    // --- 1. LÓGICA DE CARGA ---
+    async function cargarProductosProveedor() {
+        let idProv = document.getElementById('selectProveedor').value;
+        let tbody = document.getElementById('tbodyEntradas');
+        
+        // Habilitar botón de crear
+        document.getElementById('btnCrearProd').disabled = false;
+        
+        // Resetear UI
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">Cargando catálogo...</td></tr>';
+        document.getElementById('btnAgregarFila').disabled = true;
+        document.getElementById('btnGuardarTodo').disabled = true;
+
+        try {
+            await fetchProductos(idProv); // Función auxiliar para reutilizar
+            
+            tbody.innerHTML = ''; 
+            if (productosDelProveedor.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">Sin productos. ¡Crea el primero!</td></tr>';
+            } else {
+                document.getElementById('btnAgregarFila').disabled = false;
+                document.getElementById('btnGuardarTodo').disabled = false;
+                agregarFila(); 
+            }
+        } catch (error) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-danger">Error al cargar.</td></tr>';
+        }
+    }
+
+    async function fetchProductos(idProv) {
+        let resp = await fetch(`/api/productos_por_proveedor/${idProv}`);
+        productosDelProveedor = await resp.json();
+    }
+
+    // --- 2. LÓGICA DEL MODAL RÁPIDO ---
+    function abrirModalProducto() {
+        let selectProv = document.getElementById('selectProveedor');
+        let nombreProv = selectProv.options[selectProv.selectedIndex].text;
+        
+        if(!selectProv.value) return alert("Selecciona un proveedor primero.");
+        
+        document.getElementById('lblProveedorModal').innerText = nombreProv;
+        document.getElementById('newProdNombre').value = '';
+        document.getElementById('newProdPrecio').value = '';
+        modalProductoInstancia.show();
+    }
+
+    async function guardarProductoAjax() {
+        let data = {
+            nombre: document.getElementById('newProdNombre').value,
+            precio: document.getElementById('newProdPrecio').value,
+            id_categoria: document.getElementById('newProdCat').value,
+            id_proveedor: document.getElementById('selectProveedor').value
+        };
+
+        if(!data.nombre || !data.precio) return alert("Completa los datos.");
+
+        try {
+            let resp = await fetch('/api/crear_producto_rapido', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            let res = await resp.json();
+
+            if(res.status === 'ok') {
+                modalProductoInstancia.hide();
+                
+                // 1. Recargar la lista interna de productos
+                await fetchProductos(data.id_proveedor);
+                
+                // 2. Si la tabla estaba vacía, limpiarla y habilitar botones
+                let tbody = document.getElementById('tbodyEntradas');
+                if(tbody.innerText.includes('Sin productos')) {
+                    tbody.innerHTML = '';
+                    document.getElementById('btnAgregarFila').disabled = false;
+                    document.getElementById('btnGuardarTodo').disabled = false;
+                }
+
+                // 3. Agregar una fila nueva pre-seleccionada con el producto creado
+                agregarFila(res.id); 
+                
+                // 4. Actualizar otros selectores existentes
+                actualizarSelectoresExistentes();
+
+            } else {
+                alert("Error: " + res.error);
+            }
+        } catch(e) { alert("Error de conexión"); }
+    }
+
+    function actualizarSelectoresExistentes() {
+        let selects = document.querySelectorAll('select[name="id_producto[]"]');
+        selects.forEach(select => {
+            let valorActual = select.value;
+            let html = '<option value="" disabled>- Seleccionar -</option>';
+            productosDelProveedor.forEach(p => {
+                html += `<option value="${p.id}">${p.nombre}</option>`;
+            });
+            select.innerHTML = html;
+            if(valorActual) select.value = valorActual;
+        });
+    }
+
+    // --- 3. LÓGICA DE TABLA ---
+    function agregarFila(idPreseleccionado = null) {
+        let tbody = document.getElementById('tbodyEntradas');
+        
+        let opcionesHtml = '<option value="" selected disabled>- Seleccionar -</option>';
+        productosDelProveedor.forEach(p => {
+            let selected = (idPreseleccionado && p.id == idPreseleccionado) ? 'selected' : '';
+            opcionesHtml += `<option value="${p.id}" ${selected}>${p.nombre}</option>`;
+        });
+
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <select name="id_producto[]" class="form-select border-0 bg-light fw-bold" required>${opcionesHtml}</select>
+            </td>
+            <td>
+                <input type="number" name="cantidad[]" class="form-control text-center fw-bold border-success text-success" placeholder="0" min="1" required>
+            </td>
+            <td>
+                <input type="number" name="costo[]" step="0.01" class="form-control text-end" placeholder="0.00">
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="eliminarFila(this)"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function eliminarFila(btn) {
+        let tbody = document.getElementById('tbodyEntradas');
+        if (tbody.children.length > 1) {
+            btn.closest('tr').remove();
+        } else {
+            btn.closest('tr').remove();
+            document.getElementById('btnGuardarTodo').disabled = true;
+        }
+    }
+</script>
+
+{% endblock %}

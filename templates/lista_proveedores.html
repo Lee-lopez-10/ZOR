@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- ZONA DE ALERTAS -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show shadow-sm border-0 mb-4">
+                <strong>{{ '⛔ Error:' if category == 'error' else '✅ Éxito:' }}</strong> {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="row">
+    <!-- FORMULARIO LATERAL (PROVEEDORES) -->
+    <div class="col-md-4 mb-4">
+        <div class="card p-4 border-0 shadow-lg sticky-top" style="top: 100px;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark" id="tituloFormulario">🚚 Nuevo Proveedor</h5>
+                <button type="button" class="btn btn-sm btn-light text-muted" onclick="limpiarFormulario()" title="Limpiar">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('guardar_proveedor') }}" id="formProveedor">
+                <input type="hidden" name="id_proveedor" id="idProveedor">
+                <div class="mb-3">
+                    <label class="small text-muted fw-bold">EMPRESA</label>
+                    <input type="text" name="nombre" id="nombreProveedor" class="form-control" placeholder="Ej: Chanel Paris" required>
+                </div>
+                <div class="mb-3">
+                    <label class="small text-muted fw-bold">NOMBRE CONTACTO</label>
+                    <input type="text" name="contacto" id="contactoProveedor" class="form-control" placeholder="Ej: Juan Pérez">
+                </div>
+                <div class="mb-4">
+                    <label class="small text-muted fw-bold">TELÉFONO</label>
+                    <input type="text" name="telefono" id="telProveedor" class="form-control" placeholder="Ej: 555-0000">
+                </div>
+                <button type="submit" class="btn btn-dark w-100 py-2 shadow-sm" id="btnGuardar">Guardar Proveedor</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- LISTA DE PROVEEDORES -->
+    <div class="col-md-8">
+        <div class="card border-0 shadow-lg overflow-hidden rounded-4">
+            <div class="card-header bg-white border-0 py-3">
+                <h4 class="mb-0 fw-bold" style="font-family: 'Playfair Display';">Directorio de Proveedores</h4>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-uppercase small text-muted">
+                        <tr>
+                            <th class="ps-4">Empresa</th>
+                            <th>Contacto</th>
+                            <th>Teléfono</th>
+                            <th class="text-end pe-4">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in proveedores %}
+                        <tr>
+                            <td class="ps-4 fw-bold text-dark">{{ p[1] }}</td>
+                            <td class="text-muted">{{ p[2] if p[2] else '-' }}</td>
+                            <td><a href="tel:{{ p[3] }}" class="text-decoration-none text-primary fw-bold">{{ p[3] }}</a></td>
+                            <td class="text-end pe-4">
+                                <!-- BOTÓN HISTORIAL (SE MANTIENE) -->
+                                <button class="btn btn-sm btn-outline-success rounded-circle shadow-sm me-1" 
+                                        style="width: 32px; height: 32px;"
+                                        onclick="verHistorial('{{ p[0] }}', '{{ p[1] }}')"
+                                        title="Ver Historial de Entradas">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+
+                                <!-- BOTÓN EDITAR -->
+                                <button class="btn btn-sm btn-outline-primary rounded-circle shadow-sm me-1" 
+                                        style="width: 32px; height: 32px;"
+                                        onclick="editarProveedor('{{ p[0] }}', '{{ p[1] }}', '{{ p[2] }}', '{{ p[3] }}')"
+                                        title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                
+                                <!-- BOTÓN ELIMINAR -->
+                                <button class="btn btn-sm btn-outline-danger rounded-circle shadow-sm" 
+                                        style="width: 32px; height: 32px;"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#modalEliminarProv" 
+                                        data-id="{{ p[0] }}" 
+                                        data-nombre="{{ p[1] }}">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center py-5 text-muted">No hay proveedores registrados.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODALES ================= -->
+
+<!-- 1. MODAL HISTORIAL -->
+<div class="modal fade" id="modalHistorial" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white border-0">
+                <h5 class="modal-title fw-bold ms-2">📦 Historial: <span id="lblNombreHistorial" class="text-gold"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-striped mb-0 align-middle">
+                        <thead class="table-light text-muted small text-uppercase sticky-top">
+                            <tr><th class="ps-4">Fecha</th><th>Producto</th><th class="text-center">Cant.</th><th class="text-end">Costo</th><th class="text-end">Envío</th><th class="text-end pe-4">Total</th></tr>
+                        </thead>
+                        <tbody id="tablaHistorialBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light justify-content-center py-3">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-5" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. MODAL ELIMINAR PROVEEDOR -->
+<div class="modal fade" id="modalEliminarProv" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title fw-bold">⚠️ Eliminar Proveedor</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3 text-danger opacity-50" style="font-size: 4rem;"><i class="fa-solid fa-truck-fast"></i></div>
+                <h4 class="mb-2 fw-bold">¿Estás seguro?</h4>
+                <p class="text-muted">Vas a eliminar a: <strong id="nombreProvModal">...</strong></p>
+                <small class="text-danger d-block mt-2">No se podrá borrar si tiene productos en inventario.</small>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <a href="#" id="btnConfirmarBorrado" class="btn btn-danger px-4 rounded-pill fw-bold shadow-sm">Sí, Eliminar</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- LÓGICA DE HISTORIAL ---
+    var modalHistorialInstancia;
+    async function verHistorial(id, nombre) {
+        if (!modalHistorialInstancia) modalHistorialInstancia = new bootstrap.Modal(document.getElementById('modalHistorial'));
+        document.getElementById('lblNombreHistorial').textContent = nombre;
+        let tbody = document.getElementById('tablaHistorialBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4">Cargando...</td></tr>';
+        modalHistorialInstancia.show();
+        
+        try {
+            let resp = await fetch(`/api/historial_proveedor/${id}`);
+            let data = await resp.json();
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-muted">Sin registros de entrega.</td></tr>'; return; }
+            
+            let granTotal = 0;
+            data.forEach(row => {
+                granTotal += row.total;
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="ps-4 text-muted small">${row.fecha}</td>
+                        <td class="fw-bold">${row.producto}</td>
+                        <td class="text-center badge bg-light text-dark border mt-2">${row.cantidad}</td>
+                        <td class="text-end small text-muted">$${row.costo_u.toFixed(2)}</td>
+                        <td class="text-end small text-danger">+$${row.envio.toFixed(2)}</td>
+                        <td class="text-end pe-4 fw-bold">$${row.total.toFixed(2)}</td>
+                    </tr>`;
+            });
+            tbody.innerHTML += `<tr class="table-dark"><td colspan="5" class="text-end fw-bold">TOTAL INVERTIDO:</td><td class="text-end pe-4 text-gold">$${granTotal.toFixed(2)}</td></tr>`;
+        } catch(e) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al cargar.</td></tr>'; }
+    }
+
+    // --- LÓGICA DE EDICIÓN Y ELIMINACIÓN ---
+    function editarProveedor(id, nombre, contacto, telefono) {
+        document.getElementById('idProveedor').value = id;
+        document.getElementById('nombreProveedor').value = nombre;
+        document.getElementById('contactoProveedor').value = (contacto === 'None') ? '' : contacto;
+        document.getElementById('telProveedor').value = (telefono === 'None') ? '' : telefono;
+        document.getElementById('tituloFormulario').innerHTML = '✏️ Editando Proveedor';
+        document.getElementById('tituloFormulario').className = 'fw-bold mb-0 text-primary';
+        document.getElementById('btnGuardar').innerText = 'Actualizar Cambios';
+        document.getElementById('btnGuardar').className = 'btn btn-primary w-100 py-2 shadow-sm';
+        document.getElementById('nombreProveedor').focus();
+    }
+    
+    function limpiarFormulario() {
+        document.getElementById('formProveedor').reset();
+        document.getElementById('idProveedor').value = '';
+        document.getElementById('tituloFormulario').innerHTML = '🚚 Nuevo Proveedor';
+        document.getElementById('tituloFormulario').className = 'fw-bold mb-0 text-dark';
+        document.getElementById('btnGuardar').innerText = 'Guardar Proveedor';
+        document.getElementById('btnGuardar').className = 'btn btn-dark w-100 py-2 shadow-sm';
+    }
+
+    var modalEliminar = document.getElementById('modalEliminarProv')
+    modalEliminar.addEventListener('show.bs.modal', function (event) {
+        var boton = event.relatedTarget;
+        modalEliminar.querySelector('#nombreProvModal').textContent = boton.getAttribute('data-nombre');
+        modalEliminar.querySelector('#btnConfirmarBorrado').href = "/admin/proveedor/eliminar/" + boton.getAttribute('data-id');
+    })
+</script>
+
+{% endblock %}

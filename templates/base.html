@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Antonella Perfumería</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Montserrat & Playfair -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-body: #7b792b;       /* Fondo casi blanco */
+            --text-main: #2c3e50;     /* Texto oscuro elegante */
+            --accent-gold: #c6b33a;   /* Tu dorado original */
+            --accent-gold-hover: #b08d1e; /* Dorado un poco más oscuro para hovers */
+            --accent-dark: #1a1a1a;   /* Negro suave */
+            --shadow-soft: 0 10px 30px -10px rgba(15, 21, 2, 0.08); /* Sombra elegante */
+        }
+
+        body { 
+            background-color: var(--bg-body); 
+            color: var(--text-main); 
+            font-family: 'Montserrat', sans-serif; 
+            -webkit-font-smoothing: antialiased; /* Texto más nítido */
+        }
+
+        /* --- TIPOGRAFÍA --- */
+        h1, h2, h3, h4, h5, h6, .navbar-brand { 
+            font-family: 'Playfair Display', serif; 
+            letter-spacing: -0.5px;
+        }
+
+        /* --- NAVBAR MEJORADO --- */
+        .navbar { 
+            background-color: rgba(255, 255, 255, 0.95) !important; 
+            backdrop-filter: blur(10px); /* Efecto vidrio */
+            box-shadow: 0 2px 15px rgba(0,0,0,0.04); 
+            padding: 0.8rem 0; 
+        }
+        .navbar-brand { 
+            font-size: 1.5rem; 
+            color: var(--accent-dark) !important; 
+            font-weight: 700;
+        }
+        .nav-link { 
+            font-weight: 500; 
+            color: #666 !important; 
+            margin-left: 15px; 
+            transition: all 0.3s ease; 
+            font-size: 0.95rem;
+        }
+        .nav-link:hover, .nav-link.active { 
+            color: var(--accent-gold) !important; 
+            transform: translateY(-1px);
+        }
+        .nav-link i { color: var(--accent-gold); margin-right: 5px; }
+
+        /* --- TARJETAS ELEGANTES --- */
+        .card { 
+            border: none !important; 
+            border-radius: 16px; 
+            background: #cfccb3;
+            box-shadow: var(--shadow-soft);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        /* Efecto de elevación al pasar el mouse */
+        .card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 15px 35px -10px rgba(0,0,0,0.12);
+        }
+        /* Headers de tarjetas más limpios */
+        .card-header {
+            background-color: transparent !important;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            padding: 1.5rem 1.5rem 0.5rem;
+        }
+
+        /* --- BOTONES PERSONALIZADOS --- */
+        .btn-gold { 
+            background-color: var(--accent-gold); 
+            color: #fff; 
+            border: none;
+            transition: all 0.3s;
+        }
+        .btn-gold:hover { 
+            background-color: var(--accent-gold-hover); 
+            color: #fff; 
+            box-shadow: 0 4px 15px rgba(197, 160, 40, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .btn-salir { 
+            border: 1px solid var(--accent-dark); 
+            color: var(--accent-dark); 
+            border-radius: 50px; 
+            padding: 6px 20px; 
+            font-size: 0.85rem; 
+            font-weight: 600;
+            transition: 0.3s; 
+            text-decoration: none; 
+            display: inline-block;
+        }
+        .btn-salir:hover { 
+            background-color: var(--accent-dark); 
+            color: #fff; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        /* --- INPUTS & FORMULARIOS --- */
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 1px solid #eee;
+            background-color: #fcfcfc;
+            padding: 0.7rem 1rem;
+            transition: all 0.2s;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #fff;
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 0 4px rgba(197, 160, 40, 0.1); /* Resplandor dorado suave */
+        }
+
+        /* --- BADGES & DETALLES --- */
+        .rol-badge { 
+            font-size: 0.65rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            padding: 4px 10px; 
+            border-radius: 6px; 
+            margin-left: 10px; 
+            background: #f0f0f0; 
+            color: #777;
+            font-weight: 600;
+        }
+
+        /* Tablas más limpias */
+        .table>:not(caption)>*>* {
+            border-bottom-color: rgba(0,0,0,0.03);
+            padding: 1rem 0.5rem;
+        }
+        
+        /* Animación suave de entrada */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .container { animation: fadeIn 0.5s ease-out; }
+
+    </style>
+</head>
+<script>
+const PERFUME_IMG_EXTS = ['webp', 'png', 'jpg', 'jpeg', 'avif'];
+
+function slugifyNombre(nombre) {
+    return (nombre || '')
+        .toString()
+        .toLowerCase()
+        .trim()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function buildPerfumeImageCandidates(perfume) {
+    const candidates = [];
+
+    if (perfume && perfume.imagen) {
+        const clean = perfume.imagen.toString().trim();
+        if (clean) {
+            let basePath = clean.replace(/^static\//, '');
+            if (!basePath.includes('/')) {
+                basePath = `img/perfumes/${basePath}`;
+            }
+            const full = `/static/${basePath}`;
+            if (!candidates.includes(full)) candidates.push(full);
+
+            // If the DB has .jpg but the file is .webp/.avif/etc, try same basename with other extensions.
+            const dot = basePath.lastIndexOf('.');
+            const slash = basePath.lastIndexOf('/');
+            if (dot > slash) {
+                const prefix = basePath.slice(0, dot);
+                PERFUME_IMG_EXTS.forEach(ext => {
+                    const alt = `/static/${prefix}.${ext}`;
+                    if (!candidates.includes(alt)) candidates.push(alt);
+                });
+            }
+        }
+    }
+
+    const slug = slugifyNombre(perfume && perfume.nombre);
+    if (slug) {
+        PERFUME_IMG_EXTS.forEach(ext => {
+            const c = `/static/img/perfumes/${slug}.${ext}`;
+            if (!candidates.includes(c)) candidates.push(c);
+        });
+    }
+
+    return candidates;
+}
+
+
+function rotatePerfumeImg(img) {
+    const fallback = '/static/img/logo_antonella.png';
+    const raw = img.getAttribute('data-candidates') || '';
+    const list = raw ? raw.split('|') : [];
+    if (list.length === 0) {
+        img.onerror = null;
+        img.src = fallback;
+        return;
+    }
+    const current = img.getAttribute('src');
+    const idx = list.indexOf(current);
+    const next = idx >= 0 ? idx + 1 : 1;
+    if (next < list.length) {
+        img.src = list[next];
+        return;
+    }
+    img.onerror = null;
+    img.src = fallback;
+}
+
+async function buscarPerfume() {
+    const q = document.getElementById('buscar').value.trim();
+    const contenedor = document.getElementById('resultados');
+
+    if (q === "") {
+        contenedor.innerHTML = "";
+        return;
+    }
+
+    const res = await fetch(`/api/buscar_perfume?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+
+    contenedor.innerHTML = "";
+
+    if (data.length === 0) {
+        contenedor.innerHTML = '<p class="text-muted">No se encontraron perfumes</p>';
+        return;
+    }
+
+    data.forEach(p => {
+        const imgs = buildPerfumeImageCandidates(p);
+        const imgSrc = imgs[0] || '/static/img/logo_antonella.png';
+
+        contenedor.innerHTML += `
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <img src="${imgSrc}"
+                     data-candidates="${imgs.join('|')}"
+                     onerror="rotatePerfumeImg(this)"
+                     class="card-img-top"
+                     style="height:180px; object-fit:cover;">
+                <div class="card-body text-center">
+                    <h6 class="fw-bold">${p.nombre}</h6>
+                    <p class="text-success fw-bold">$${p.precio.toFixed(2)}</p>
+                    <button class="btn btn-dark btn-sm w-100"
+                            onclick="seleccionarPerfume(${p.id}, '${p.nombre}', ${p.precio})">
+                        Seleccionar
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    });
+}
+
+function seleccionarPerfume(id, nombre, precio) {
+    document.getElementById("perfume_id").value = id;
+    document.getElementById("perfume_nombre").value = nombre;
+    document.getElementById("perfume_precio").value = precio;
+
+    document.getElementById("resultados").innerHTML = "";
+    document.getElementById("buscar").value = nombre;
+}
+</script>
+
+
+<body>
+
+    <!-- BARRA DE NAVEGACIÓN (SOLO SI NO ESTAMOS EN LOGIN Y HAY SESIÓN) -->
+    {% if session['id_usuario'] and request.endpoint != 'login' %}
+    <nav class="navbar navbar-expand-lg navbar-light sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <!-- Logo -->
+                <img src="{{ url_for('static', filename='img/logo_antonella.png') }}" alt="Logo" style="height: 45px; margin-right: 12px; border-radius: 8px;">
+                <span>Antonella <span style="color: var(--accent-gold);">Perfumería</span></span>
+            </a>
+            
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    
+                    <!-- MENÚ ADMINISTRACIÓN (SOLO ADMIN) -->
+                    {% if session['rol'] == 'Administrador' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarAdmin" role="button" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-user-shield"></i> Administración
+                        </a>
+                        <ul class="dropdown-menu border-0 shadow-lg rounded-4 p-2 mt-2">
+                            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('dashboard') }}">📦 Inventario de Productos</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('entrada_stock') }}">🚛 Registrar Pedido (Entrada)</a></li>
+                            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('reporte_fechas') }}">📅 Reporte Histórico</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('lista_usuarios') }}">👥 Gestionar Empleados</a></li>
+                            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('lista_proveedores') }}">🚚 Gestionar Proveedores</a></li>
+                            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('gastos') }}">📉 Registrar Gastos</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    
+                    <!-- ENLACES COMUNES -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('ventas') }}">
+                            <i class="fa-solid fa-cash-register"></i> Punto de Venta
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('panel_caja') }}">
+                            <i class="fa-solid fa-box-archive"></i> Control Caja
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('reporte_diario') }}">
+                            <i class="fa-solid fa-chart-line"></i> Corte del Día
+                        </a>
+                    </li>
+
+                    <li class="nav-item ms-4 d-flex align-items-center border-start ps-4">
+                        <div class="d-flex flex-column align-items-end me-3 text-end lh-1">
+                            <span class="small fw-bold text-dark">{{ session['nombre'] }}</span>
+                            <span class="rol-badge">{{ session['rol'] }}</span>
+                        </div>
+                        <a href="{{ url_for('logout') }}" class="btn-salir">
+                            <i class="fa-solid fa-right-from-bracket"></i> Salir
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <div class="container mt-5 mb-5">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

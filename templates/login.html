@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-4">
+        
+        <div class="text-center mb-5">
+            <!-- Logo Grande en el Login -->
+            <img src="{{ url_for('static', filename='img/logo_antonella.png') }}" alt="Antonella Perfumería" class="img-fluid mb-3" style="max-height: 120px;">
+            <h2 class="fw-bold" style="font-family: 'Playfair Display';">Bienvenido</h2>
+            <p class="text-muted">Sistema de Gestión de Inventario y Ventas</p>
+        </div>
+
+        <div class="card shadow-lg p-4 border-0">
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-danger text-center rounded-pill py-2 small border-0 bg-danger bg-opacity-10 text-danger fw-bold">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold">CORREO ELECTRÓNICO</label>
+                        <input type="email" name="email" class="form-control" placeholder="usuario@antonella.com" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="small text-muted fw-bold">CONTRASEÑA</label>
+                        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-gold w-100 py-3 rounded-pill shadow-sm">INGRESAR AL SISTEMA</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="text-center mt-5 text-muted small">
+            <p>&copy; 2025 Antonella Perfumería<br>Fragancias que despiertan emociones</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

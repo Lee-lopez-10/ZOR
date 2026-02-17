@@ -1,0 +1,6 @@
+<img src="{{ url_for('static', filename=perfume.Imagen) }}"
+     alt="{{ perfume.Nombre }}"
+     width="120">
+
+     cursor.execute("SELECT * FROM Perfume WHERE Estado = 1")
+     perfumes = cursor.fetchall()

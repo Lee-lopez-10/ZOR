@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- ZONA DE ALERTAS -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} shadow-sm border-0 mb-4 rounded-3">
+                <strong>{{ 'Atención:' }}</strong> {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card p-5 border-0 shadow-lg rounded-4">
+            
+            <div class="text-center mb-4">
+                <h3 class="fw-bold mb-1">
+                    {% if usuario %}
+                        <i class="fa-solid fa-user-pen me-2 text-warning"></i>Editar Empleado
+                    {% else %}
+                        <i class="fa-solid fa-user-plus me-2 text-gold"></i>Registrar Empleado
+                    {% endif %}
+                </h3>
+                <p class="text-muted small">
+                    {% if usuario %}
+                        Modifica los datos de acceso del usuario
+                    {% else %}
+                        Crea un nuevo acceso al sistema
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- El action se deja vacío para que envíe a la misma URL (nuevo o editar/id) -->
+            <form method="POST" action="">
+                
+                <div class="mb-3">
+                    <label class="fw-bold small text-muted">NOMBRE COMPLETO</label>
+                    <input type="text" name="nombre" class="form-control form-control-lg" 
+                           value="{{ usuario[1] if usuario else '' }}" required placeholder="Ej: Juan Pérez">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="fw-bold small text-muted">CORREO (USUARIO)</label>
+                    <input type="email" name="email" class="form-control form-control-lg" 
+                           value="{{ usuario[2] if usuario else '' }}" required placeholder="juan@antonella.com">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="fw-bold small text-muted">CONTRASEÑA</label>
+                    <input type="password" name="password" class="form-control form-control-lg" placeholder="••••••••">
+                    {% if usuario %}
+                        <div class="form-text text-warning"><i class="fa-solid fa-circle-info me-1"></i>Déjalo en blanco para mantener la contraseña actual.</div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-4">
+                    <label class="fw-bold small text-muted">ROL / PERMISOS</label>
+                    <select name="rol" class="form-select form-select-lg">
+                        <option value="2" {% if usuario and usuario[4] == 2 %}selected{% endif %}>Vendedor (Solo Ventas)</option>
+                        <option value="1" {% if usuario and usuario[4] == 1 %}selected{% endif %}>Administrador (Acceso Total)</option>
+                    </select>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-dark btn-lg rounded-pill shadow-sm">
+                        {% if usuario %} Guardar Cambios {% else %} Registrar Usuario {% endif %}
+                    </button>
+                    <a href="{{ url_for('lista_usuarios') }}" class="btn btn-light rounded-pill text-muted">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
